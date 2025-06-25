@@ -2,7 +2,7 @@ import numpy as np
 from datetime import timedelta, datetime
 
 
-def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2):
+def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verbose=False):
     """
     Generate analytical water concentration time series.
     Parameters
@@ -35,12 +35,14 @@ def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2):
 
     water_conc = np.ones(Nt) * C0 
     
-    
-    print('Use analytical functions: ', func)
+    if verbose:
+        print('Use analytical functions: ', func)
     
     if 'sinus' in func:        
         water_conc = water_conc + water_conc*np.random.rand() + np.sin(6*np.pi*tt/Nt) 
     if 'decay' in func:
+        if verbose:
+            print('Decay coefficient:', decaycoeff)
         water_conc = water_conc*np.random.rand()  + water_conc * np.exp(-tt*decaycoeff)
     if 'setzero' in func:
         water_conc = water_conc + water_conc*np.random.rand() 
@@ -137,10 +139,11 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
 
 
 
-def computeCfarr_dynamic(kup, kel, C1, time=None, Cf0=0.):
+def compute_Cb_dynamic(kup, kel, C1, time=None, Cb0=0.):
 
     """
-    Compute the water concentration time series based on a dynamic model.
+    Compute times series of biological concentration with a dynamic model.
+    Use sea water concentration and uptake and depuration rate constants.
     Parameters
     ----------
     kup : float
@@ -151,7 +154,7 @@ def computeCfarr_dynamic(kup, kel, C1, time=None, Cf0=0.):
         Array of water concentration values at each time step.
     time : np.ndarray, optional
         Array of datetime objects representing the time steps. If None, it will be computed from C1.
-    Cf0 : float, optional
+    Cb0 : float, optional
         Initial concentration factor. Default is 0.
     Returns
     -------
@@ -165,7 +168,7 @@ def computeCfarr_dynamic(kup, kel, C1, time=None, Cf0=0.):
     dts = (time[1]-time[0]).total_seconds()
     
     Cfarr = np.zeros(Nt)
-    Cfp0=Cf0
+    Cfp0=Cb0
 
 
     for ii in range(Nt):    
@@ -179,7 +182,7 @@ def computeCfarr_dynamic(kup, kel, C1, time=None, Cf0=0.):
 
 
 
-def computeCfarr_instant(C1, cr,  time=None):
+def compute_Cb_instant(C1, cr,  time=None):
 
     """
     Compute the water concentration time series based on an instantaneous model.

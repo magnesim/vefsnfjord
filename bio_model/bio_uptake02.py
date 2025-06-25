@@ -14,8 +14,10 @@ from matplotlib.dates import DateFormatter
 
 from datetime import datetime, timedelta
 
-from bio_uptake_tools import computeCfarr_dynamic
+from bio_uptake_tools import compute_Cb_dynamic
+from bio_uptake_tools import compute_Cb_instant
 from bio_uptake_tools import get_Cw_from_opendrift_conc
+from bio_uptake_tools import get_water_conc_ana
 from bio_uptake_tools import plot_bio_map
 
 import yaml
@@ -28,8 +30,18 @@ if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser()
 #    parser.add_argument('--tstart', type=str, help='First time step', required=False, default='2020-09-10')
-    
+    parser.add_argument('--configfile', type=str, help='Path to the config file', required=False, default='bio_input.yaml')   
+    parser.add_argument('--verbose', action='store_true', help='Verbose output', required=False, default=False)
+
     args = parser.parse_args()
+
+    verbose = args.verbose
+
+    if args.configfile is not None:
+        input_yaml = args.configfile
+        if not os.path.exists(input_yaml):
+            raise FileNotFoundError(f"Configuration file not found: {input_yaml}")
+
 #    tstartS     = args.tstart
 
 
@@ -38,28 +50,39 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
 # read input config from yaml file
-input_yaml = 'bio_input.yaml'
+#input_yaml = 'bio_input.yaml'
+print('Reading input configuration from: {}'.format(input_yaml))
+
 with open(input_yaml, 'r') as f:
     conf = yaml.safe_load(f)
 
-tstart = datetime.strptime(conf['tstart'], '%Y-%m-%d %H')
-tend   = datetime.strptime(conf['tend'], '%Y-%m-%d %H')
 
-fn = '{}/{}'.format( conf['model_folder'],  conf['model_fn'].replace('EXPNM', conf['exp_nm']))
+tstart = datetime.strptime(conf.get('tstart','2000-01-01'), '%Y-%m-%d %H')
+tend   = datetime.strptime(conf.get('tend','2000-02-01'), '%Y-%m-%d %H')
 
 
-stations = conf['stations_to_eval']
+exp_nm = conf.get('exp_nm', '')  # default to empty string if not specified
 
-print('Stations to evaluate:', stations)
 
-positions = [conf['stations_coords'][item] for item in  conf['stations_to_eval'] ]
+stations = conf.get('stations_to_eval', None)  # list of stations to evaluate
+
+
+positions = [conf['stations_coords'][item] for item in  stations ]
 Npos = len(positions)
 
 
 water_conc = conf.get('water_conc', 'model')  # default to 'model' if not specified
 if water_conc == 'model':
-    print('Using water concentration from model output:', fn)
+    transport_model_file = '{}/{}'.format( conf.get('model_folder',''),  conf.get('model_fn','').replace('EXPNM', exp_nm))
+    imp_radius = conf.get('impact_radius', 0)  # default to 0 m if not specified
+    print('Using water concentration from model output:', transport_model_file)
+    if not os.path.exists(transport_model_file):
+        raise FileNotFoundError(f"Transport model file not found: {transport_model_file}")
 elif water_conc == 'constant':
     print('Using constant water concentration.')
 elif water_conc == 'decay':
@@ -71,22 +94,23 @@ elif water_conc == 'randomspikes':
 elif water_conc == 'setzero':
     print('Using setzero function water concentration.')
 else:
-    raise ValueError(f"Unknown water concentration option: {water_conc}. Choose 'model', 'analytical', or 'constant'.")
+    raise ValueError(f"Unknown water concentration option: {water_conc}. Choose 'model', 'decay', 'sinus', 'randomspikes', 'setzero', or 'constant'.")
 
 bio_uptake_model = conf.get('bio_uptake_model', 'dynamic')  # default to 'dynamic' if not specified
 
 
-print('Number of positions:', Npos)
-print('Positions:', positions)
-imp_radius = conf.get('impact_radius', 0)  # default to 0 m if not specified
-print('Impact radius:', imp_radius, 'm')
+print('\nNumber of positions:', Npos)
+for ii, pos in enumerate(stations):
+    print(f'{pos}: {positions[ii]}')
+
+#print('Stations to evaluate:', stations)
+#print('Positions:', positions)
 
 
 output_dir = conf.get('output_folder', None)
-print('Output directory:', output_dir)
+print('Output directory: {}'.format( output_dir) )
 
-if False:
-#if output_dir is not None:
+if output_dir is not None:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print(f'Created output directory: {output_dir}')
@@ -100,43 +124,44 @@ if conf.get('plot_locations_on_map', False):
     else:
         ofn = None
 
-    plot_bio_map(positions, fn, ofn, verbose=True)
-
-
-
+    plot_bio_map(positions, transport_model_file, ofn, verbose=verbose)
 
 
 
 
 
 # Initial bio concentration
-Cf0 = conf.get('ana_Cf0', 0.)  # default to 0. Bq/kg if not specified
-
-# Inintial water concentration
-Cw0 = conf.get('ana_Cw0', 1.) 
+ini_Cb = conf.get('initial_bio_conc', 0.)  # default to 0. Bq/kg if not specified
 
 
+
+
+
+
+
+print('\n # ####################')
+print('Bio uptake module parameters:')
 # Uptake and elimination coefficients (s-1)
 try: 
     kel  =  conf['depuration_coefficient']
     kup  =  conf['uptake_coefficient']
     bio_thalf = np.log(2.) / (kel*24*3600)  # days
     concentration_factor = kup / kel  # dimensionless
+    print('Using provided uptake and depuration coefficients:')
 
 except KeyError:
     bio_thalf = conf['bio_half_life']  # days
     concentration_factor = conf['concentration_factor']  # dimensionless
     kel = np.log(2.) / (bio_thalf * 24 * 3600)  # convert days to seconds
     kup = concentration_factor * kel  # uptake coefficient is a factor of depuration coefficient
+    print('Using bio half life and concentration factor to compute uptake and depuration coefficients:')
 
 
 
-print('\n # ####################')
-print('Bio uptake module parameters:')
 print('Bio half life:                {:4.2f} days'.format(bio_thalf))
-print('Concentration factor:         {:4.2f} '.format(concentration_factor))
-print('Uptake coefficient (kup):     {:4.5e} '.format(kup))
-print('Depuration coefficient (kel): {:4.5e} '.format(kel))
+print('Concentration factor:         {:4.2f} L/kg '.format(concentration_factor))
+print('Uptake coefficient (kup):     {:4.2e} s-1'.format(kup))
+print('Depuration coefficient (kel): {:4.2e} s-1'.format(kel))
 print('')
 
 
@@ -148,40 +173,62 @@ print('')
 
 
 
-# Store results in arrays
-time_arr_all   = []
-Cwarr_all      = []
-cfarr_all      = []
 
+
+
+
+
+
+
+print ('\n # ####################')
+print ('Get water concentration and compute bio uptake')
+
+if water_conc == 'model':
+    print('Using water concentration from model output:', transport_model_file)
+    print('Impact radius: {} m'.format(imp_radius) )
+
+else: 
+    print('Using analytical water concentration function: {}'.format(water_conc))
+
+    ini_Cw                = conf.get('ana_initial_water_conc', 1.)    # Initial water concentration
+    ana_decaycoeff        = conf.get('ana_decay_coeff', 1e-2)         # default to 1e-2 if not specified
+    nspikes               = conf.get('ana_nspikes', 8)                # default to 8 spikes if not specified
+
+
+
+# Store results in arrays
+time_arr_all                   = []
+seawater_concentration_all     = []
+bio_concentration_all          = []
+print('')
 for ii, pos in enumerate(positions):
-    print(f'{ii} of {Npos} - Processing {stations[ii]} position: {pos}')
+    print(f'{ii+1} of {Npos} - Processing {stations[ii]} position: {pos}')
 
 
     if water_conc == 'model':
         # Get water concentration from model output
-        print('Using water concentration from model output:', fn)
-
-        [time_arr, Cwarr] = get_Cw_from_opendrift_conc(fn, tstart, tend, pos=pos, imp_radius=imp_radius)
+        [time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, imp_radius=imp_radius)
     
     
     elif water_conc == 'sinus' or water_conc == 'decay' or water_conc == 'randomspikes' or water_conc == 'setzero':
-        from bio_uptake_tools import get_water_conc_ana
-        # Get analytical water concentration
-        print('Using analytical water concentration function.')
-        nspikes = conf.get('ana_nspikes', 8)  # default to 8 spikes if not specified
-        [time_arr, Cwarr] = get_water_conc_ana(tstart, tend, C0=Cw0, func=water_conc, decaycoeff=1e-2, nspikes=nspikes)
+        [time_arr, seawater_concentration] = get_water_conc_ana(tstart, tend, C0=ini_Cw, func=water_conc, decaycoeff=ana_decaycoeff, nspikes=nspikes, verbose=verbose)
     
     
     elif water_conc == 'constant':
-        # Use constant water concentration
-        print(f'Using constant water concentration: {Cw0}')
+        print(f'Using constant water concentration: {ini_Cw} Bq/m^3')
         time_arr = np.array( [tstart+timedelta(hours=item) for item in range(int((tend-tstart).total_seconds()/3600))] )
-        Cwarr = np.ones(len(time_arr)) * Cw0  # Example constant value
+        seawater_concentration = np.ones(len(time_arr)) * ini_Cw  # 
     
     else:
         raise ValueError(f"Unknown water concentration option: {water_conc}. Choose 'model', 'analytical', or 'constant'.")
 
-    print( 'First timestep: ',time_arr[0], 'Last timestep: ', time_arr[-1])
+    if verbose:
+        print('Convert sea water concentration from Bq/m^3 to Bq/L')
+    seawater_concentration = seawater_concentration / 1000.  # Convert Bq/m^3 to Bq/L
+
+    if verbose:
+        print('Done setting water concentration for position:', stations[ii])
+        print( 'First timestep: ',time_arr[0], 'Last timestep: ', time_arr[-1])
     
     
     
@@ -194,19 +241,20 @@ for ii, pos in enumerate(positions):
     
     # Compute uptake 
     if bio_uptake_model == 'instant':
-        from bio_uptake_tools import computeCfarr_instant
-        print('Using instant bio uptake model.')
-        cfarr = computeCfarr_instant(Cwarr, concentration_factor, time=time_arr)
+        if verbose:
+            print('Using instant bio uptake model.')
+        bio_concentration = compute_Cb_instant(seawater_concentration, concentration_factor, time=time_arr)
 
     elif bio_uptake_model == 'dynamic':
-        print('Using dynamic bio uptake model.')
-        cfarr = computeCfarr_dynamic(kup,kel, Cwarr, time=time_arr, Cf0=Cf0)
+        if verbose:
+            print('Using dynamic bio uptake model.')
+        bio_concentration = compute_Cb_dynamic(kup,kel, seawater_concentration, time=time_arr, Cb0=ini_Cb)
     else:
         raise ValueError(f"Unknown bio uptake model: {bio_uptake_model}. Choose 'instant' or 'dynamic'.")
 
     time_arr_all.append(time_arr)
-    Cwarr_all.append(Cwarr)
-    cfarr_all.append(cfarr)
+    seawater_concentration_all.append(seawater_concentration)
+    bio_concentration_all.append(bio_concentration)
     
 
 
@@ -221,26 +269,33 @@ for ii, pos in enumerate(positions):
 
 
 
+print('\n # ####################')
+print('Plotting results')
+
 
 ncol=1
 nrow=2
 fig = plt.figure(figsize=[10,6])
 ax1=plt.subplot(nrow,ncol,1)
 for ii in range(Npos):
-    ax1.plot(time_arr_all[ii], Cwarr_all[ii])
-ax1.set_ylabel('Sea water concentration (Bq/m$^3$)')
+    ax1.plot(time_arr_all[ii], seawater_concentration_all[ii])
+ax1.set_ylabel('Sea water concentration (Bq/L)')
 ax1.grid()
 
 ax2=plt.subplot(nrow,ncol,2)
 for ii in range(Npos):
-    ax2.plot(time_arr_all[ii], cfarr_all[ii], label = stations[ii])
+    ax2.plot(time_arr_all[ii], bio_concentration_all[ii], label = stations[ii])
 ax2.grid()
 ax2.set_ylabel('Bio concentration (Bq/kg)')
 ax2.legend()
 
+thalfstr = '$t_{1/2}$'
+plt.suptitle('{}\nWater concentration: {} \nBio uptake model: {} \n$C_f={}$,  {}={} '.format(exp_nm, water_conc, bio_uptake_model, concentration_factor,thalfstr, bio_thalf))
+
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
+
 
 plt.show()
 

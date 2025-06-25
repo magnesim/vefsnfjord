@@ -1,0 +1,105 @@
+
+
+
+# ############################
+# Dates 
+
+#'tstart'     : '2020-10-15 00'
+#'tend'       : '2020-11-1 00'
+'tstart'     : '2022-04-01 00'
+#'tstart'     : '2022-06-21 00'
+'tend'       : '2022-07-10 00'
+
+
+
+# ############################
+# Model and experiment names
+
+'model_folder'  :  '/path/to/model/input/data'
+#'output_folder' :  '/path/to/output/plots'
+
+#'exp_nm'        : 'run2020-001'
+'exp_nm'        : 'run2022-001'
+'model_fn'      : 'vefsn_conc_EXPNM.nc'   # must contain EXPNM keyword 
+
+
+
+#'plot_locations_on_map' : True
+
+
+
+# ############################
+# Model parameters
+
+'water_conc'        : 'model'
+#'water_conc'        : 'decay'
+#'water_conc'        : 'constant'
+#'water_conc'        : 'setzero'
+#'water_conc'        : 'sinus'
+#'water_conc'        : 'randomspikes'
+
+
+
+
+'bio_uptake_model' : 'instant'
+'bio_uptake_model' : 'dynamic'
+
+
+'ana_Cw0'     :   1.0 # initial water concentration (Bq/m3)
+'ana_Cf0'     :   0.0 # initial bio concentration (Bq/m3)
+'ana_nspikes' :   4
+
+
+
+
+
+# ###############
+# coefficients
+
+#'uptake_coefficient'      : 3.2e-3 
+#'depuration_coefficient'  : 4.0e-6
+
+'concentration_factor' : 4.6
+#'concentration_factor' : 46
+'bio_half_life'        : 45.0 # days
+#'bio_half_life'        : 5.0 # days
+
+
+'impact_radius' : 23.0 # meters
+
+
+
+
+
+# ###############
+# stations to evaluate
+
+'stations_to_eval' : [
+                        #'Tang0',
+                        'Tang1',
+                        'Tang2',
+                        'Tang3',
+                       #'Tang6',
+                        #'Tang8',
+                        #'TangD',
+                        #'TangÅ',
+#                        'T-KB1',
+#                        'T-KB2',
+#                        'T-KB3',
+                      ] 
+
+
+
+'stations_coords' : {
+                        'Tang0' : [  65.8636 , 13.1835  ],
+                        'Tang1' : [  65.8833 , 13.1596  ],
+                        'Tang2' : [ 65.9171 , 13.1430 ], # 
+                        'Tang3' : [ 65.9380 , 13.0644 ], #  
+                        'Tang6' : [ 65.9718 , 12.7685 ], # 
+                        'Tang8' : [ 66.0366 , 12.9534 ], # 
+                        'TangD' : [ 66.0204 , 12.9434 ], # 
+                        'TangÅ' : [ 65.9882 , 12.8477 ], #
+                        'T-KB1' : [ 65.8813, 13.1348 ],
+                        'T-KB2' : [ 65.895,  13.1269 ],
+                        'T-KB3' : [ 65.9207, 13.0433 ],
+                        }

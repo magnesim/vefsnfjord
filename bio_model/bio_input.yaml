@@ -31,9 +31,9 @@
 # ############################
 # Model parameters
 
-'water_conc'        : 'model'
+#'water_conc'        : 'model'
 #'water_conc'        : 'decay'
-#'water_conc'        : 'constant'
+'water_conc'        : 'constant'
 #'water_conc'        : 'setzero'
 #'water_conc'        : 'sinus'
 #'water_conc'        : 'randomspikes'
@@ -41,13 +41,9 @@
 
 
 
-'bio_uptake_model' : 'instant'
+#'bio_uptake_model' : 'instant'
 'bio_uptake_model' : 'dynamic'
 
-
-'ana_Cw0'     :   1.0 # initial water concentration (Bq/m3)
-'ana_Cf0'     :   0.0 # initial bio concentration (Bq/m3)
-'ana_nspikes' :   4
 
 
 
@@ -59,12 +55,22 @@
 #'uptake_coefficient'      : 3.2e-3 
 #'depuration_coefficient'  : 4.0e-6
 
-'concentration_factor' : 4.6
-#'concentration_factor' : 46
+'concentration_factor' : 46   # Bq/kg per Bq/L
 'bio_half_life'        : 45.0 # days
-#'bio_half_life'        : 5.0 # days
+
+'initial_bio_conc'     :   0.02 # initial bio concentration (Bq/m3)
 
 
+
+
+# analytical seawater concentration parameters 
+'ana_initial_water_conc'   :   1.0 # initial water concentration (Bq/m3)
+'ana_nspikes'              :   4
+'ana_decay_coeff'           :  0.01 # decay coefficient (1/day)
+
+
+
+# model seawater concentration parameters
 'impact_radius' : 23.0 # meters
 
 

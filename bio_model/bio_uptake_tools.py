@@ -394,3 +394,46 @@ def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
     return mltidx
 
 
+
+
+
+# #PLOTTING FUNCTIONS
+
+def plot_bio_concentration_timeseries(data, suptitle='', verbose=False):
+
+    """
+    Plot bio concentration time series.
+    Parameters
+    ----------
+    data : list of dicts
+        List containing dictionaries with 'time', 'ydata', and 'ylabel' keys.
+    suptitle : str, optional
+        Super title for the plot. Default is an empty string.
+    Returns
+    -------
+    None
+    """
+    
+    import matplotlib.pyplot as plt
+
+    ncol = 1
+    nrow = len(data)
+    
+    fig = plt.figure(figsize=[10, 3*nrow])
+    fig.suptitle(suptitle)
+
+    for ii, d in enumerate(data):
+        ax = plt.subplot(nrow, ncol, ii + 1)
+        nstations = len(data[ii]['ydata'])
+        if verbose:
+            print('Plotting data for:', d['ylabel'], 'with', nstations, 'stations')
+        for jj in range(nstations):
+            ax.plot(d['time'][jj], d['ydata'][jj], label=d['labels'][jj])
+        if ii == 0:
+            ax.legend()
+        ax.set_ylabel(d['ylabel'])
+        ax.grid()
+        ax.set_xlim([d['time'][0][0] , d['time'][0][-1]])
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    #plt.show()

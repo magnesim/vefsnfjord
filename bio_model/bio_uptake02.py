@@ -19,6 +19,7 @@ from bio_uptake_tools import compute_Cb_instant
 from bio_uptake_tools import get_Cw_from_opendrift_conc
 from bio_uptake_tools import get_water_conc_ana
 from bio_uptake_tools import plot_bio_map
+from bio_uptake_tools import plot_bio_concentration_timeseries
 
 import yaml
 import os
@@ -273,28 +274,61 @@ print('\n # ####################')
 print('Plotting results')
 
 
-ncol=1
-nrow=2
-fig = plt.figure(figsize=[10,6])
-ax1=plt.subplot(nrow,ncol,1)
-for ii in range(Npos):
-    ax1.plot(time_arr_all[ii], seawater_concentration_all[ii])
-ax1.set_ylabel('Sea water concentration (Bq/L)')
-ax1.grid()
+to_plotting01 = {
+   'time'  : time_arr_all,
+   'ydata' : seawater_concentration_all,
+   'ylabel': 'Sea water concentration (Bq/L)', 
+   'labels': stations,
+   }
 
-ax2=plt.subplot(nrow,ncol,2)
+to_plotting02 = {
+   'time'  : time_arr_all,
+   'ydata' : bio_concentration_all,
+   'ylabel': 'Bio concentration (Bq/kg dw)', 
+   'labels': stations,
+    }
+
+apparent_concentration_factor = []
 for ii in range(Npos):
-    ax2.plot(time_arr_all[ii], bio_concentration_all[ii], label = stations[ii])
-ax2.grid()
-ax2.set_ylabel('Bio concentration (Bq/kg)')
-ax2.legend()
+    concfact = bio_concentration_all[ii] / seawater_concentration_all[ii]
+    concfact[np.isnan(concfact)] = 0.  # Replace NaN with 0
+    apparent_concentration_factor.append( concfact )
+
+to_plotting03 = {
+   'time'  : time_arr_all,
+   'ydata' : apparent_concentration_factor,
+   'ylabel': 'Apparent concentration factor (dimensionless)', 
+   'labels': stations,
+    }
 
 thalfstr = '$t_{1/2}$'
-plt.suptitle('{}\nWater concentration: {} \nBio uptake model: {} \n$C_f={}$,  {}={} '.format(exp_nm, water_conc, bio_uptake_model, concentration_factor,thalfstr, bio_thalf))
+title = '{}\nWater concentration: {} \nBio uptake model: {} \n$C_f={}$,  {}={} '.format(exp_nm, water_conc, bio_uptake_model, concentration_factor,thalfstr, bio_thalf)
 
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-plt.gcf().autofmt_xdate()
-plt.tight_layout()
+plot_bio_concentration_timeseries([ to_plotting01, to_plotting02, to_plotting03], suptitle=title, verbose=verbose )
+
+
+
+# ncol=1
+# nrow=2
+# fig = plt.figure(figsize=[10,6])
+# ax1=plt.subplot(nrow,ncol,1)
+# for ii in range(Npos):
+#     ax1.plot(time_arr_all[ii], seawater_concentration_all[ii])
+# ax1.set_ylabel('Sea water concentration (Bq/L)')
+# ax1.grid()
+
+# ax2=plt.subplot(nrow,ncol,2)
+# for ii in range(Npos):
+#     ax2.plot(time_arr_all[ii], bio_concentration_all[ii], label = stations[ii])
+# ax2.grid()
+# ax2.set_ylabel('Bio concentration (Bq/kg)')
+# ax2.legend()
+
+# plt.suptitle('{}\nWater concentration: {} \nBio uptake model: {} \n$C_f={}$,  {}={} '.format(exp_nm, water_conc, bio_uptake_model, concentration_factor,thalfstr, bio_thalf))
+
+# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+# plt.gcf().autofmt_xdate()
+# plt.tight_layout()
 
 
 plt.show()

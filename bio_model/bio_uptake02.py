@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser()
 #    parser.add_argument('--tstart', type=str, help='First time step', required=False, default='2020-09-10')
-    parser.add_argument('--configfile', type=str, help='Path to the config file', required=False, default='bio_input.yaml')   
+    parser.add_argument('-f', '--configfile', type=str, help='Path to the config file', required=False, default='bio_input.yaml')   
     parser.add_argument('--verbose', action='store_true', help='Verbose output', required=False, default=False)
 
     args = parser.parse_args()
@@ -82,6 +82,9 @@ if water_conc == 'model':
     transport_model_file = '{}/{}'.format( conf.get('model_folder',''),  conf.get('model_fn','').replace('EXPNM', exp_nm))
     imp_radius = conf.get('impact_radius', 0)  # default to 0 m if not specified
     print('Using water concentration from model output:', transport_model_file)
+    fill_conc = conf.get('fill_concentration', 0.0)  # default to 0 Bq/m^3 if not specified
+    print(f'Use fill concentration: {fill_conc} Bq/m^3')
+
     if not os.path.exists(transport_model_file):
         raise FileNotFoundError(f"Transport model file not found: {transport_model_file}")
 elif water_conc == 'constant':
@@ -209,8 +212,16 @@ for ii, pos in enumerate(positions):
     if water_conc == 'model':
         # Get water concentration from model output
         [time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, imp_radius=imp_radius)
-    
-    
+        dt = (time_arr[1] - time_arr[0]).total_seconds()  # Time step in seconds
+        fill_time = np.array([tstart + timedelta(seconds=item) for item in range(0, int( (tend-tstart).total_seconds() ), int(dt))])
+        fill_conc = np.ones(len(fill_time)) * fill_conc  # Fill concentration in Bq/m^3
+        match_ft  = (fill_time >= time_arr[0]) & (fill_time <= time_arr[-1])  # 
+        fill_conc[match_ft] = seawater_concentration  # Replace fill concentration with model concentration at the correct time steps
+
+
+        time_arr                 = fill_time  # Use fill time as time array
+        seawater_concentration   = fill_conc  # Use fill concentration as seawater concentration
+
     elif water_conc == 'sinus' or water_conc == 'decay' or water_conc == 'randomspikes' or water_conc == 'setzero':
         [time_arr, seawater_concentration] = get_water_conc_ana(tstart, tend, C0=ini_Cw, func=water_conc, decaycoeff=ana_decaycoeff, nspikes=nspikes, verbose=verbose)
     

@@ -197,6 +197,7 @@ else:
     ini_Cw                = conf.get('ana_initial_water_conc', 1.)    # Initial water concentration
     ana_decaycoeff        = conf.get('ana_decay_coeff', 1e-2)         # default to 1e-2 if not specified
     nspikes               = conf.get('ana_nspikes', 8)                # default to 8 spikes if not specified
+    nwaves                = conf.get('ana_nwaves', 1)                 # default to 1 wave if not specified
 
 
 
@@ -223,7 +224,7 @@ for ii, pos in enumerate(positions):
         seawater_concentration   = fill_conc  # Use fill concentration as seawater concentration
 
     elif water_conc == 'sinus' or water_conc == 'decay' or water_conc == 'randomspikes' or water_conc == 'setzero':
-        [time_arr, seawater_concentration] = get_water_conc_ana(tstart, tend, C0=ini_Cw, func=water_conc, decaycoeff=ana_decaycoeff, nspikes=nspikes, verbose=verbose)
+        [time_arr, seawater_concentration] = get_water_conc_ana(tstart, tend, C0=ini_Cw, func=water_conc, decaycoeff=ana_decaycoeff,nwaves=nwaves, nspikes=nspikes, verbose=verbose)
     
     
     elif water_conc == 'constant':

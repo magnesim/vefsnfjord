@@ -2,7 +2,7 @@ import numpy as np
 from datetime import timedelta, datetime
 
 
-def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verbose=False):
+def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verbose=False, nwaves=1):
     """
     Generate analytical water concentration time series.
     Parameters
@@ -39,7 +39,7 @@ def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verb
         print('Use analytical functions: ', func)
     
     if 'sinus' in func:        
-        water_conc = water_conc + water_conc*np.random.rand() + np.sin(6*np.pi*tt/Nt) 
+        water_conc = water_conc + water_conc*np.random.rand() + np.sin(2*nwaves*np.pi*tt/Nt) 
     if 'decay' in func:
         if verbose:
             print('Decay coefficient:', decaycoeff)

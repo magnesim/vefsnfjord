@@ -2,6 +2,72 @@ import numpy as np
 from datetime import timedelta, datetime
 
 
+
+
+def get_water_salinity(files, t0,t1,  pos=None,imp_radius=0.,level=[-1], verbose=False):
+    from netCDF4 import Dataset, date2index, num2date 
+
+
+
+    ts_salt   = []
+    ts_time   = []
+
+    for file in files:
+        nc      = Dataset(file)
+        nct         = nc.variables['ocean_time']
+        lat         = nc.variables['lat_rho'][:]
+        lon         = nc.variables['lon_rho'][:]
+        t0i = date2index(t0, nct, calendar=None, select='nearest')
+        t1i = date2index(t1, nct, calendar=None, select='nearest')
+        time = num2date(nct,units=nct.units,only_use_cftime_datetimes=False,only_use_python_datetimes=True)
+        time_arr = time[t0i:t1i+1]
+        if len(time_arr)==0 or t0 > time_arr[-1] or t1 < time_arr[0]:
+            continue
+        if verbose:
+            print(time_arr[0], time_arr[-1])
+        
+        mask     = nc.variables['mask_rho'][:]
+        
+
+        stations_ji = nearest_latlon([pos[0]], [pos[1]], lat, lon, mask=mask,verbose=verbose, radius=imp_radius)
+        
+        if len(stations_ji) == 0:
+            print('No stations found within the specified radius.')
+            return time_arr, np.zeros(len(time_arr))
+        
+        stay=stations_ji[0]
+        stax=stations_ji[1]
+
+
+        if len(level)==1:
+            ts_salt_file = nc.variables['salt'][t0i:t1i+1,level,stay,stax].squeeze()
+
+        elif len(level)==2:
+            if len(stax) == 1 and len(stay) == 1: 
+                ts_salt_file = np.mean( nc.variables['salt'][t0i:t1i+1,level[0]:level[1],stay,stax],axis=1).squeeze() 
+        
+            elif len(stax) > 1 and len(stay) > 1:
+                ts_salt_file = nc.variables['salt'][t0i:t1i+1, level[0]:level[1], stay,stax].mean(axis=1).mean(axis=(1,2))
+
+        
+        if not len(ts_salt_file) == len(time_arr):
+            continue
+
+        ts_salt  = np.append(ts_salt, ts_salt_file)
+        ts_time  = np.append(ts_time, time_arr)
+
+        nc.close()
+
+    ts_salt = np.array(ts_salt)
+    ts_time = np.array(ts_time)
+
+
+
+    return ts_time, ts_salt
+
+
+
+
 def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verbose=False, nwaves=1):
     """
     Generate analytical water concentration time series.
@@ -29,7 +95,7 @@ def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verb
     
     dt=1. 
     
-    time_arr = np.array( [t0 + timedelta(hours=float(dt*i)) for i in range(int((t1 - t0).total_seconds()/3600)) ] )
+    time_arr = np.array( [t0 + timedelta(hours=float(dt*i)) for i in range(int((t1 - t0).total_seconds()/3600)+1) ] )
     Nt=len(time_arr)
     tt=np.arange(Nt)
 
@@ -62,7 +128,7 @@ def get_water_conc_ana(t0,t1, C0=1, func='', decaycoeff = 0.0011, nspikes=2,verb
 
 
 
-def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=['Total'], imp_radius=0.):
+def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=['Total'], imp_radius=0.,verbose=False):
 
     """
     Extract water concentration from an OpenDrift netCDF file.
@@ -99,7 +165,7 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
     t0i = date2index(t0, nct, calendar=None, select='nearest')
     t1i = date2index(t1, nct, calendar=None, select='nearest')
     time = num2date(nct,units=nct.units,only_use_cftime_datetimes=False,only_use_python_datetimes=True)
-    time_arr = time[t0i:t1i]
+    time_arr = time[t0i:t1i+1]
     
     masktmp = nc.variables['land'][:]
     mask = np.zeros(masktmp.shape, dtype=np.int8)
@@ -107,8 +173,9 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
     mask[masktmp==0] = 1
     
 
-    stations_ji = nearest_latlon([pos[0]], [pos[1]], lat, lon, mask=mask,verbose=True, radius=imp_radius)
-    print('Nearest station index:', stations_ji)
+    stations_ji = nearest_latlon([pos[0]], [pos[1]], lat, lon, mask=mask,verbose=verbose, radius=imp_radius, plotting=verbose)
+    if verbose:
+        print('Get seawater concentration from nearest station index:', stations_ji)
     
     if len(stations_ji) == 0:
         print('No stations found within the specified radius.')
@@ -121,11 +188,10 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
     for sp in species:
         if sp=='Total':
             if len(stax) == 1 and len(stay) == 1:
-                water_conc = nc.variables['concentration_smooth'][t0i:t1i, :, -1, stay,stax].squeeze()
+                water_conc = nc.variables['concentration_smooth'][t0i:t1i+1, :, -1, stay,stax].squeeze()
                 water_conc = np.sum(water_conc, axis=1)
             elif len(stax) > 1 and len(stay) > 1:
-                water_conc = nc.variables['concentration_smooth'][t0i:t1i, :, -1, stay,stax].sum(axis=1).mean(axis=(1,2))
-    print('conc shape:', water_conc.shape)
+                water_conc = nc.variables['concentration_smooth'][t0i:t1i+1, :, -1, stay,stax].sum(axis=1).mean(axis=(1,2))
     
     nc.close()
 
@@ -139,7 +205,7 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
 
 
 
-def compute_Cb_dynamic(kup, kel, C1, time=None, Cb0=0.):
+def compute_Cb_dynamic(kup, kel, C1, time=None, Cb0=0., salt_ts=None, salt_koeffs=None ):
 
     """
     Compute times series of biological concentration with a dynamic model.
@@ -156,11 +222,17 @@ def compute_Cb_dynamic(kup, kel, C1, time=None, Cb0=0.):
         Array of datetime objects representing the time steps. If None, it will be computed from C1.
     Cb0 : float, optional
         Initial concentration factor. Default is 0.
+
+    salt_koeffs : [lower_limits, upper_limits, kup_salt]
     Returns
     -------
     Cfarr : np.ndarray
         Array of concentration factor values at each time step.
     """
+
+
+    if salt_koeffs is not None:
+        [lower_limits, upper_limits, kup_salt] = salt_koeffs
 
 
     Nt=len(time)
@@ -170,14 +242,25 @@ def compute_Cb_dynamic(kup, kel, C1, time=None, Cb0=0.):
     Cfarr = np.zeros(Nt)
     Cfp0=Cb0
 
+    kup_ts  = np.zeros(Nt)
+
+
+
+    if salt_ts is not None:
+        nintervals=len(lower_limits)
+        for jj in range(nintervals):
+            kup_ts[np.where((salt_ts>=lower_limits[jj]) & (salt_ts<upper_limits[jj])) ]  = kup_salt[jj]
+    else:
+        kup_ts[:] = kup
 
     for ii in range(Nt):    
-        Cfp1  = Cfp0 + C1[ii] * kup*dts  - Cfp0 *kel*dts 
+        Cfp1  = Cfp0 + C1[ii] * kup_ts[ii]*dts  - Cfp0 *kel*dts 
         Cfarr[ii] = Cfp1
         Cfp0 = Cfp1 
 
 
-    return Cfarr 
+
+    return Cfarr , kup_ts/kel
 
 
 
@@ -210,7 +293,7 @@ def compute_Cb_instant(C1, cr,  time=None):
 
 
 
-def plot_bio_map(pos, filename, ofn=None, ext = [12.4, 13.3, 65.8, 66.09], verbose=False):
+def plot_bio_map(pos, filename, ofn=None, title='', labels=[], ext = [12.4, 13.3, 65.8, 66.09], verbose=False):
     """
     Plot a map with the specified positions and topography.
     Parameters
@@ -262,17 +345,19 @@ def plot_bio_map(pos, filename, ofn=None, ext = [12.4, 13.3, 65.8, 66.09], verbo
     c2 = ax.contour(lon,lat, topo, [0.,1.], colors='k', linewidths=1.6, 
                     zorder=6, transform=proj_pp)
     for ii in range(len(pos)):
-        s2 = ax.scatter(pos[ii][1], pos[ii][0], transform=proj_pp)
+        s2 = ax.scatter(pos[ii][1], pos[ii][0], label= labels[ii],transform=proj_pp)
+    ax.set_title(title)
+    ax.legend()
     if not ofn==None:
         plt.savefig(ofn, dpi=300,bbox_inches='tight')
         plt.close()
-    if verbose:
-        print('Plot saved to:', ofn)
+        if verbose:
+            print('Plot saved to:', ofn)
 
 
 
 
-def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
+def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.,plotting=False):
     """
     Find the nearest latitude and longitude grid points to given points.
     Parameters
@@ -331,35 +416,31 @@ def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
             idx=np.argmin(dr)
             nearest = np.unravel_index(idx, dr.shape)
             mltidx.append([[nearest[0]], [nearest[1]]])  # Append as a list of lists for consistency
-            if verbose:
-                print(f"Point {pp}: lat={latp}, lon={lonp}, nearest point at index={nearest} with distance={minval:.2f} m")
+#            if verbose:
+#                print(f"Point {pp}: lat={latp}, lon={lonp}, nearest point at index={nearest} with distance={minval:.2f} m")
 
         elif radius > 0.:
             # Find all grid points within the specified radius
             within_radius = np.where(dr <= radius)
-            if verbose:
-                print(f"Point {pp}: lat={latp}, lon={lonp}, points within radius({radius}m): {len(within_radius[0])}, min distance={minval:.2f} m")
+#            if verbose:
+#                print(f"Point {pp}: lat={latp}, lon={lonp}, points within radius({radius}m): {len(within_radius[0])}, min distance={minval:.2f} m")
             if len(within_radius[0]) > 0:
                 # If there are points within the radius, append them to mltidx
-                if verbose:
-                    print(f"Point {pp}: lat={latp}, lon={lonp}, nearest points within radius at indices={within_radius}")
+#                if verbose:
+#                    print(f"Point {pp}: lat={latp}, lon={lonp}, nearest points within radius at indices={within_radius}")
                 mltidx.append(within_radius)
             else:
                 idx=np.argmin(dr)  
                 nearest = np.unravel_index(idx, dr.shape)
-                print("No points found within the specified radius. Use nearest",nearest)
+                if verbose:
+                    print("No points found within the specified radius. Use nearest {} lat: {:5.3f} lon: {:5.3f}".format(nearest, lata[nearest], lona[nearest]))
                 mltidx.append([[nearest[0]], [nearest[1]]])
 
 
     # Convert mltidx to a numpy array for consistency
     if isinstance(mltidx, list):
         mltidx = [np.array(item) for item in mltidx]
-#    else:
-#        mltidx = np.array(mltidx)
-#    if isinstance(mltidx, list) and mltidx == []:
     
-    if verbose:
-        print("Nearest grid points indices:", mltidx)
     
     if isinstance(mltidx, list) and len(mltidx) == 1:
         mltidx = np.array(mltidx[0])  # If only one point, convert to a single array
@@ -368,11 +449,11 @@ def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
 
 
     if verbose:
-        print("Final nearest grid points indices:", mltidx)
+        print(f'Number of points within {radius}m radius: {len(mltidx[0])}')
+        print("Final nearest grid points indices:", mltidx[0], mltidx[1])
     if len(mltidx) == 0:
         return mltidx  # If no points found, return empty mltidx
 
-    plotting = True
     if plotting:
         import matplotlib.pyplot as plt
         fig = plt.figure()
@@ -389,7 +470,6 @@ def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')
         ax.set_title('Nearest Grid Points')
-#        ax.legend()
 
     return mltidx
 
@@ -399,7 +479,7 @@ def nearest_latlon(latp1,lonp1,lata,lona,mask=None, verbose=False,radius=0.):
 
 # #PLOTTING FUNCTIONS
 
-def plot_bio_concentration_timeseries(data, suptitle='', verbose=False):
+def plot_bio_concentration_timeseries(data, suptitle='', outfile=None,verbose=False):
 
     """
     Plot bio concentration time series.
@@ -436,4 +516,9 @@ def plot_bio_concentration_timeseries(data, suptitle='', verbose=False):
         ax.set_xlim([d['time'][0][0] , d['time'][0][-1]])
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    #plt.show()
+    
+    if outfile:
+        plt.savefig(outfile, dpi=300,bbox_inches='tight')
+        plt.close()
+        print('Plot saved to:', outfile)
+

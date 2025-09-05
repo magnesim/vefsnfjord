@@ -71,9 +71,22 @@
 
 
 # model seawater concentration parameters
-'impact_radius' : 23.0 # meters
+'impact_radius'         : 23.0 # meters
+'fill_concentration'    : 2.0 # Bq/m3
 
 
+
+# Salinity intervals and CF values for salt-dependent CF
+'salt_CF'         : True     # Set true if salinity-dependent CF
+#                            # low lim, hi lim, CF
+'salt_intervals_CF'       : [[   0,    11.5,   214],
+                             [11.5,      21,    81],
+                             [  21,      45,    55]
+                            ]
+'salt_default'          : 12.   # default salinity used to fill where model vaule in unavailable
+
+'salt_datadir'        : '/path/to/ocean/model/data'
+'salt_filenames'      : 'norfjords_160m_his.nc4_2022070101-2022????00'
 
 
 

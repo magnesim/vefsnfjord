@@ -201,6 +201,43 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
 
 
 
+def get_Cw_from_trajan_file(filename='', t0=None, t1=None, pos=None, verbose=False):
+
+    import os 
+    import xarray as xr
+    import pandas as pd 
+
+    if os.path.isfile(filename):
+        print('File exists, read concentrations from:', filename)
+        ds_c = xr.open_dataset(filename)
+
+    else:
+        print('File does not exist:', filename)
+        return None, None
+    
+
+    ds_c = ds_c.sel( time=slice(t0,  t1)) 
+    ts2 = ds_c.sel(lon=pos[1], lat=pos[0], z=-3, method='nearest')
+    time_arr = ts2['time'].values
+    water_conc = ts2['smooth'].values
+    time_arr = np.array([ pd.to_datetime(t).to_pydatetime() for t in time_arr])
+    
+    if verbose:
+        print(time_arr[0], type(time_arr[0]))
+
+    ds_c.close()
+
+
+    if verbose:
+        print(' Extracted concentration time series at position:', pos)
+        print(' Time range:', time_arr[0], time_arr[-1])
+        print(' Concentration range:', np.nanmin(water_conc), np.nanmax(water_conc))
+
+
+
+    return time_arr, water_conc
+
+
 
 
 

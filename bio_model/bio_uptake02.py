@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from bio_uptake_tools import compute_Cb_dynamic
 from bio_uptake_tools import compute_Cb_instant
 from bio_uptake_tools import get_Cw_from_opendrift_conc
+from bio_uptake_tools import get_Cw_from_trajan_file
 from bio_uptake_tools import get_water_conc_ana
 from bio_uptake_tools import get_water_salinity
 from bio_uptake_tools import plot_bio_map
@@ -254,7 +255,8 @@ for ii, pos in enumerate(positions):
 
     if water_conc == 'model':
         # Get water concentration from model output
-        [time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, imp_radius=imp_radius, verbose=verbose)
+        #[time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, imp_radius=imp_radius, verbose=verbose)
+        [time_arr, seawater_concentration] = get_Cw_from_trajan_file(transport_model_file, tstart, tend, pos=pos, verbose=verbose)
         dt = (time_arr[1] - time_arr[0]).total_seconds()  # Time step in seconds
         fill_time = np.array([tstart + timedelta(seconds=item) for item in range(0, int( (tend-tstart).total_seconds() )+1, int(dt))])
         if verbose:
@@ -346,6 +348,7 @@ for ii, pos in enumerate(positions):
         salt_time_all.append(salt_time)
         seawater_salinity_all.append(seawater_salinity)
         cf_ts_all.append(cf_ts)
+        print(f'Mean salt: {np.mean(seawater_salinity):4.2f} Mean CF: {np.mean(cf_ts):4.2f}')
 
 
 

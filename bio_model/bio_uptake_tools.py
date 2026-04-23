@@ -22,6 +22,7 @@ def get_water_salinity(files, t0,t1,  pos=None,imp_radius=0.,level=[-1], verbose
         time = num2date(nct,units=nct.units,only_use_cftime_datetimes=False,only_use_python_datetimes=True)
         time_arr = time[t0i:t1i+1]
         if len(time_arr)==0 or t0 > time_arr[-1] or t1 < time_arr[0]:
+            #print(time[0], time[-1])
             continue
         if verbose:
             print(time_arr[0], time_arr[-1])
@@ -192,6 +193,12 @@ def get_Cw_from_opendrift_conc(filename='', t0=None, t1=None, pos=None, species=
                 water_conc = np.sum(water_conc, axis=1)
             elif len(stax) > 1 and len(stay) > 1:
                 water_conc = nc.variables['concentration_smooth'][t0i:t1i+1, :, -1, stay,stax].sum(axis=1).mean(axis=(1,2))
+        elif sp=='Dissolved':
+            if len(stax) == 1 and len(stay) == 1:
+                water_conc = nc.variables['concentration_smooth'][t0i:t1i+1, 0, -1, stay,stax].squeeze()
+#                water_conc = np.sum(water_conc, axis=1)
+            elif len(stax) > 1 and len(stay) > 1:
+                water_conc = nc.variables['concentration_smooth'][t0i:t1i+1, 0, -1, stay,stax].mean(axis=(1,2))
     
     nc.close()
 
@@ -536,7 +543,7 @@ def plot_bio_concentration_timeseries(data, suptitle='', outfile=None,verbose=Fa
     ncol = 1
     nrow = len(data)
     
-    fig = plt.figure(figsize=[10, 3*nrow])
+    fig = plt.figure(figsize=[12, 3.5*nrow])
     fig.suptitle(suptitle)
 
     for ii, d in enumerate(data):
@@ -545,12 +552,18 @@ def plot_bio_concentration_timeseries(data, suptitle='', outfile=None,verbose=Fa
         if verbose:
             print('Plotting data for:', d['ylabel'], 'with', nstations, 'stations')
         for jj in range(nstations):
-            ax.plot(d['time'][jj], d['ydata'][jj], label=d['labels'][jj])
+            if d['labels'][jj] in ['T-8', 'T-D', 'T-Å', 'T-6']:
+                col = 'darkred'
+            else:
+                col = 'darkblue'
+            col=f'C{jj}'
+            ax.plot(d['time'][jj], d['ydata'][jj], label=d['labels'][jj], c=col, lw=.9, alpha=.4)
         if ii == 0:
             ax.legend()
         ax.set_ylabel(d['ylabel'])
         ax.grid()
         ax.set_xlim([d['time'][0][0] , d['time'][0][-1]])
+        ax.set_ylim(bottom=0)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     
@@ -559,3 +572,40 @@ def plot_bio_concentration_timeseries(data, suptitle='', outfile=None,verbose=Fa
         plt.close()
         print('Plot saved to:', outfile)
 
+
+
+
+
+
+
+
+def plot_salt_and_conc_stats(conc, salt, stations, outfile=None):
+    import matplotlib.pyplot as plt
+    nstations = len(stations)
+    print('Plotting salt and concentration stats for', nstations, 'stations')
+    fig=plt.figure(figsize=(12, 12))
+    for jj in range(nstations):
+        ax1 = plt.subplot(nstations, 3, jj*3+1)
+        ax1.grid()
+        ax2 = plt.subplot(nstations, 3, jj*3+2)
+        ax2.grid()
+        ax3 = plt.subplot(nstations, 3, jj*3+3)
+        ax3.grid()
+        ax1.hist(conc[jj], bins=20, alpha=0.7, color='orange')
+        ax1.set_title(f'Concentration Statistics {stations[jj]}')
+        ax1.set_ylabel('Concentration')
+        ax2.hist(salt[jj], bins=20, alpha=0.7)
+        ax2.set_title('Salinity Histogram')
+        ax3.scatter(salt[jj], conc[jj], alpha=0.5)
+        ax3.set_title('Concentration vs Salinity')
+        plt.tight_layout()
+
+        print(f'Station  {stations[jj]:12s}: conc min= {np.nanmin(conc[jj]):7.6f}, max= {np.nanmax(conc[jj]):7.6f} mean= {np.nanmean(conc[jj]):7.6f}  std= {np.nanstd(conc[jj]):7.6f}')
+        print(f'Station  {stations[jj]:12s}: salt min= {np.nanmin(salt[jj]):7.2f}, max= {np.nanmax(salt[jj]):7.2f} mean= {np.nanmean(salt[jj]):7.2f}  std= {np.nanstd(salt[jj]):7.2f}')
+        print(f'Correlation conc-salt: {np.corrcoef(salt[jj], conc[jj])[0,1]:.2f} n={len(conc[jj])} {len(salt[jj])}')
+    if outfile:
+        plt.savefig(outfile, dpi=300,bbox_inches='tight')
+        plt.close()
+        print('Plot saved to:', outfile)
+
+    return

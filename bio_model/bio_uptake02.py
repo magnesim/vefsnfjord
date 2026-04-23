@@ -22,6 +22,7 @@ from bio_uptake_tools import get_water_conc_ana
 from bio_uptake_tools import get_water_salinity
 from bio_uptake_tools import plot_bio_map
 from bio_uptake_tools import plot_bio_concentration_timeseries
+from bio_uptake_tools import plot_salt_and_conc_stats
 
 import yaml
 import glob
@@ -255,8 +256,10 @@ for ii, pos in enumerate(positions):
 
     if water_conc == 'model':
         # Get water concentration from model output
-        #[time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, imp_radius=imp_radius, verbose=verbose)
-        [time_arr, seawater_concentration] = get_Cw_from_trajan_file(transport_model_file, tstart, tend, pos=pos, verbose=verbose)
+        species = ['Dissolved']
+#        species = ['Total']
+        [time_arr, seawater_concentration] = get_Cw_from_opendrift_conc(transport_model_file, tstart, tend, pos=pos, species=species, imp_radius=imp_radius, verbose=verbose)
+        #[time_arr, seawater_concentration] = get_Cw_from_trajan_file(transport_model_file, tstart, tend, pos=pos, verbose=verbose)
         dt = (time_arr[1] - time_arr[0]).total_seconds()  # Time step in seconds
         fill_time = np.array([tstart + timedelta(seconds=item) for item in range(0, int( (tend-tstart).total_seconds() )+1, int(dt))])
         if verbose:
@@ -287,6 +290,12 @@ for ii, pos in enumerate(positions):
         print('Convert sea water concentration from Bq/m^3 to Bq/L')
     seawater_concentration = seawater_concentration / 1000.  # Convert Bq/m^3 to Bq/L
 
+
+    add_background = conf.get('background_value',0.)
+    if add_background>0:
+        print(f'Add constant value ({add_background:6.2e}) Bq/L to compensate for background concentration ')
+        seawater_concentration += add_background
+
     print('Done setting water concentration for position:', stations[ii])
     print( 'First timestep: ',time_arr[0], 'Last timestep: ', time_arr[-1], 'len(time)',len(time_arr), 'len(conc)',len(seawater_concentration) )
     
@@ -301,7 +310,10 @@ for ii, pos in enumerate(positions):
         if verbose:
             print(f'Look into files: {datadir}/{filenames}')
             print(f'Time range: {tstart} to {tend} Position: {pos}')
-        ocean_model_files = np.sort( glob.glob(f'{datadir}/{filenames}') ).ravel()
+        #ocean_model_files = np.sort( glob.glob(f'{datadir}/{filenames}') ).ravel()
+        ocean_model_files = np.sort( glob.glob(datadir+'/'+filenames) ).ravel()
+        if verbose:
+            print(f'Found {len(ocean_model_files)} files.')
         [salt_time, seawater_salinity]   = get_water_salinity(ocean_model_files, tstart, tend, pos=pos, imp_radius=imp_radius, level=[-3,-1] , verbose=verbose)
 
 
@@ -353,6 +365,46 @@ for ii, pos in enumerate(positions):
 
 
 
+to_file_station = []
+to_file_bio_conc = []
+to_file_seawater_conc = []
+to_file_time = []
+to_file_latitude = []
+to_file_longitude = []
+
+t_obs = datetime (2022,7,5,12)
+for ii in range (Npos):
+    print('\nResults for station:', stations[ii])
+    sample_time = datetime.strptime(positions[ii][2], '%Y-%m-%dT%H:%M')
+    idx = np.argmin(np.abs( time_arr_all[ii] - sample_time ) )
+    print ('SAMPLE TIME idx time {} {} {}'.format(sample_time, idx, time_arr_all[ii][idx]))
+#    idx = np.where( time_arr_all[ii] == t_obs )[0][0]
+    if verbose: 
+        print('Time:', time_arr_all[ii][idx])
+        print('Seawater concentration (Bq/L):', seawater_concentration_all[ii][idx])
+        print('Bio concentration (Bq/kg fw):', bio_concentration_all[ii][idx])
+    to_file_station.append( stations[ii] )
+    to_file_bio_conc.append( bio_concentration_all[ii][idx] )
+    to_file_seawater_conc.append( seawater_concentration_all[ii][idx] )
+    to_file_time.append( time_arr_all[ii][idx] )
+    to_file_latitude.append( positions[ii][0] )
+    to_file_longitude.append( positions[ii][1] )
+
+
+to_file = {'Station': to_file_station,
+           'Latitude': to_file_latitude,
+           'Longitude': to_file_longitude,
+           'Sample time': to_file_time,
+           'Cs-137 (Bq/kg fw)': to_file_bio_conc,
+           'Seawater Cs-137 (Bq/L)': to_file_seawater_conc, 
+           }
+import pandas as pd
+df = pd.DataFrame(to_file)
+outfilename = f'{output_dir}/bio_model_results_{exp_nm}_00.csv' if saveplots else None
+if outfilename is not None:
+    df.to_csv(outfilename, index=False)
+    print(f'\nSaved results to file: {outfilename}')
+
 
 
 
@@ -376,7 +428,7 @@ to_plotting01 = {
 to_plotting02 = {
    'time'  : time_arr_all,
    'ydata' : bio_concentration_all,
-   'ylabel': 'Bio concentration (Bq/kg dw)', 
+   'ylabel': 'Bio concentration (Bq/kg fw)', 
    'labels': stations,
     }
 
@@ -389,7 +441,7 @@ for ii in range(Npos):
 to_plotting03 = {
    'time'  : time_arr_all,
    'ydata' : apparent_concentration_factor,
-   'ylabel': 'Apparent concentration factor (dimensionless)', 
+   'ylabel': 'Apparent $C_F$', 
    'labels': stations,
     }
 
@@ -415,8 +467,14 @@ thalfstr = '$t_{1/2}$'
 title = '{}\nWater concentration: {} \nBio uptake model: {} \n$C_F={}$,  {}={} '.format(exp_nm, water_conc, bio_uptake_model, concentration_factor,thalfstr, bio_thalf)
 
 
-outfilename = f'{output_dir}/bio_model_{exp_nm}02.png' if saveplots else None
+outfilename = f'{output_dir}/bio_model_{exp_nm}06_dissolved.png' if saveplots else None
 plot_bio_concentration_timeseries( to_plotting , suptitle=title, verbose=verbose, outfile=outfilename)
+
+
+if salt_CF:
+    outfilename = f'{output_dir}/bio_model_{exp_nm}_stats.png' if saveplots else None
+    plot_salt_and_conc_stats(seawater_concentration_all, seawater_salinity_all, stations, outfile=outfilename)
+
 
 
 

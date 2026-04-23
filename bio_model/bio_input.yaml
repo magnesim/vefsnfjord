@@ -25,15 +25,15 @@
 
 
 #'plot_locations_on_map' : True
-
+'saveplots'             : True
 
 
 # ############################
 # Model parameters
 
-#'water_conc'        : 'model'
+'water_conc'        : 'model'
 #'water_conc'        : 'decay'
-'water_conc'        : 'constant'
+#'water_conc'        : 'constant'
 #'water_conc'        : 'setzero'
 #'water_conc'        : 'sinus'
 #'water_conc'        : 'randomspikes'
@@ -55,25 +55,27 @@
 #'uptake_coefficient'      : 3.2e-3 
 #'depuration_coefficient'  : 4.0e-6
 
-'concentration_factor' : 46   # Bq/kg per Bq/L
+'concentration_factor' : 43   # Bq/kg per Bq/L
 'bio_half_life'        : 45.0 # days
 
-'initial_bio_conc'     :   0.02 # initial bio concentration (Bq/m3)
+'initial_bio_conc'     :   0.0735 # initial bio concentration (Bq/m3)
 
 
 
 
 # analytical seawater concentration parameters 
-'ana_initial_water_conc'   :   1.0 # initial water concentration (Bq/m3)
+'ana_initial_water_conc'   :   1.0   # initial water concentration (Bq/m3)
 'ana_nspikes'              :   4
-'ana_decay_coeff'           :  0.01 # decay coefficient (1/day)
-'ana_nwaves'              :   3 # number of waves in sinusoidal function
+'ana_decay_coeff'          :   0.01  # decay coefficient (1/day)
+'ana_nwaves'               :   3     # number of waves in sinusoidal function
 
 
 # model seawater concentration parameters
-'impact_radius'         : 23.0 # meters
-'fill_concentration'    : 2.0 # Bq/m3
+'impact_radius'         : 600.0   # meters
+'fill_concentration'    :   1.5   # Bq/m3
 
+
+'background_value'      : 1.4e-3   # Bq/L
 
 
 # Salinity intervals and CF values for salt-dependent CF
@@ -83,7 +85,7 @@
                              [11.5,      21,    81],
                              [  21,      45,    55]
                             ]
-'salt_default'          : 12.   # default salinity used to fill where model vaule in unavailable
+'salt_default'          : 11.   # default salinity used to fill where model value is unavailable
 
 'salt_datadir'        : '/path/to/ocean/model/data'
 'salt_filenames'      : 'norfjords_160m_his.nc4_2022070101-2022????00'
@@ -94,31 +96,31 @@
 # stations to evaluate
 
 'stations_to_eval' : [
-                        #'Tang0',
-                        'Tang1',
-                        'Tang2',
-                        'Tang3',
-                       #'Tang6',
-                        #'Tang8',
-                        #'TangD',
-                        #'TangÅ',
+                       'T-0',
+                       'T-1',
+                       'T-2',
+                       'T-3',
+                       'T-6',
+                       'T-8',
+                       'T-D',
+                       'T-Å',
 #                        'T-KB1',
 #                        'T-KB2',
 #                        'T-KB3',
                       ] 
 
 
-
 'stations_coords' : {
-                        'Tang0' : [  65.8636 , 13.1835  ],
-                        'Tang1' : [  65.8833 , 13.1596  ],
-                        'Tang2' : [ 65.9171 , 13.1430 ], # 
-                        'Tang3' : [ 65.9380 , 13.0644 ], #  
-                        'Tang6' : [ 65.9718 , 12.7685 ], # 
-                        'Tang8' : [ 65.925  , 12.959  ], # 
-                        'TangD' : [ 66.0204 , 12.9434 ], # 
-                        'TangÅ' : [ 65.9882 , 12.8477 ], #
-                        'T-KB1' : [ 65.8813, 13.1348 ],
-                        'T-KB2' : [ 65.895,  13.1269 ],
-                        'T-KB3' : [ 65.9207, 13.0433 ],
+                        'T-0' : [  65.8636 , 13.1835 , '2022-07-04T07:42'  ],
+                        'T-1' : [  65.8833 , 13.1596 , '2022-07-04T08:43'  ],
+                        'T-2' : [  65.9171 , 13.1430 , '2022-07-04T09:48'  ], # 
+                        'T-3' : [  65.9380 , 13.0644 , '2022-07-04T10:18'], #  
+                        'T-6' : [  65.9718 , 12.7685 , '2022-07-04T13:34' ], # 
+                        'T-8' : [  65.925  , 12.959  , '2022-07-05T12:00'], # 
+                        'T-D' : [  66.0204 , 12.9434 , '2022-07-04T14:39'], # 
+                        'T-Å' : [  65.9882 , 12.8477 , '2022-07-04T12:00' ], #
+                        'T-KB1' : [ 65.8813, 13.1348 , '2022-07-06T12:00'],
+                        'T-KB2' : [ 65.895,  13.1269 , '2022-07-06T12:00'],
+                        'T-KB3' : [ 65.9207, 13.0433 , '2022-07-06T12:00'],
                         }
+

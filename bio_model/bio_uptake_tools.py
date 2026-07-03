@@ -556,10 +556,16 @@ def plot_bio_concentration_timeseries(data, suptitle='', outfile=None,verbose=Fa
                 col = 'darkred'
             else:
                 col = 'darkblue'
-            col=f'C{jj}'
+            #col=f'C{jj}'
             ax.plot(d['time'][jj], d['ydata'][jj], label=d['labels'][jj], c=col, lw=.9, alpha=.4)
         if ii == 0:
-            ax.legend()
+            # put legend in upper left corner and with two columns, increase linewidth of lines for better visibility
+            leg = ax.legend(loc='upper left', ncol=2, fontsize='medium', frameon=True, framealpha=0.9, edgecolor='black')
+            for handle in leg.get_lines():
+                handle.set_linewidth(2.0)
+                handle.set_alpha(1.)
+            #ax.legend(loc='upper left', ncol=2, fontsize='small', frameon=True, framealpha=0.9, edgecolor='black')
+            #ax.legend()
         ax.set_ylabel(d['ylabel'])
         ax.grid()
         ax.set_xlim([d['time'][0][0] , d['time'][0][-1]])

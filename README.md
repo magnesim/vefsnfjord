@@ -55,7 +55,7 @@ cd vefsnfjord
 conda env create -f environment.yaml
 
 # Activate the environment
-conda activate vefsnfjord
+conda activate camabur
 ```
 
 ---

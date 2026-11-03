@@ -1,0 +1,16 @@
+name: marbio
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10,<3.12
+  - numpy>=1.22
+  - scipy>=1.9
+  - pandas>=1.5
+  - xarray>=2022.06
+  - netcdf4>=1.6
+  - cftime>=1.6
+  - pyyaml>=6.0
+  - matplotlib>=3.6
+  - cartopy>=0.21
+  - pip
